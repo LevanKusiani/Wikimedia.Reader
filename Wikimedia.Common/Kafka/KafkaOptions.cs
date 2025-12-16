@@ -22,6 +22,7 @@
     public class ConsumerOptions
     {
         public string GroupId { get; set; } = "";
+        public string ConsumerTopic { get; set; } = "";
         public string AutoOffsetReset { get; set; } = "latest";
         public bool EnableAutoCommit { get; set; }
     }
