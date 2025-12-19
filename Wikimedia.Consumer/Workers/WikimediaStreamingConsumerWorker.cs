@@ -1,19 +1,23 @@
 ﻿using Confluent.Kafka;
 using Microsoft.Extensions.Options;
 using Wikimedia.Common.Kafka;
+using Wikimedia.Consumer.Services;
 
 namespace Wikimedia.Consumer.Workers
 {
     internal class WikimediaStreamingConsumerWorker : BackgroundService
     {
+        private readonly OpenSearchService _openSearchService;
         private readonly KafkaOptions _options;
         private readonly ILogger<WikimediaStreamingConsumerWorker> _logger;
         private readonly IConsumer<string, string> _consumer;
 
         public WikimediaStreamingConsumerWorker(
+            OpenSearchService openSearchService,
             IOptions<KafkaOptions> kafkaOptions,
             ILogger<WikimediaStreamingConsumerWorker> logger)
         {
+            _openSearchService = openSearchService;
             _options = kafkaOptions.Value;
             _logger = logger;
 
@@ -93,6 +97,12 @@ namespace Wikimedia.Consumer.Workers
                             Offset: {result.Offset}
                             Timestamp: {result.Message.Timestamp.UtcDateTime}
                             ");
+
+                    // Send data to opensearch
+                    await _openSearchService.IndexDocumentAsync(
+                        "wikimedia",
+                        result.Message.Value,
+                        stoppingToken);
 
                     if (!_options.Consumer.EnableAutoCommit)
                     {

@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="conduktor-kafka-single.yml" />
+  </Folder>
   <Project Path="Wikimedia.Common/Wikimedia.Common.csproj" />
   <Project Path="Wikimedia.Consumer/Wikimedia.Consumer.csproj" />
   <Project Path="Wikimedia.Producer/Wikimedia.Producer.csproj" />

@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 using Wikimedia.Producer.Clients;
 using Wikimedia.Producer.Services;
 
@@ -28,7 +29,12 @@ namespace Wikimedia.Producer.Workers
             await _wikimediaSseClient.StartAsync(
                 async json =>
                 {
-                    await _wikimediaProducerService.ProduceAsync("wikimedia_recentchange", null!, json);
+                    var result = JsonSerializer.Deserialize<WikiRecentChange>(json);
+
+                    if (result is not null)
+                        await _wikimediaProducerService.ProduceAsync("wikimedia_recentchange", $"{result.ServerName}:{result.Title}", json);
+                    else
+                        _logger.LogWarning("Received null WikiRecentChange from JSON: {Json}", json);
                 },
                 stoppingToken);
         }
