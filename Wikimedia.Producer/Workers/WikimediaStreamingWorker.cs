@@ -27,12 +27,12 @@ namespace Wikimedia.Producer.Workers
             _logger.LogInformation("Starting Wikimedia stream");
 
             await _wikimediaSseClient.StartAsync(
-                async json =>
+                async ev =>
                 {
-                    var result = JsonSerializer.Deserialize<WikiRecentChange>(json);
+                    var json = JsonSerializer.Serialize(ev);
 
-                    if (result is not null)
-                        await _wikimediaProducerService.ProduceAsync("wikimedia_recentchange", $"{result.ServerName}:{result.Title}", json);
+                    if (ev is not null)
+                        await _wikimediaProducerService.ProduceAsync("wikimedia_recentchange", $"{ev.ServerName}:{ev.Title}", json);
                     else
                         _logger.LogWarning("Received null WikiRecentChange from JSON: {Json}", json);
                 },

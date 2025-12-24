@@ -13,7 +13,7 @@ namespace Wikimedia.Producer.Clients
             _logger = logger;
         }
 
-        public async Task StartAsync(Func<string, Task> onMessage, CancellationToken cancellationToken)
+        public async Task StartAsync(Func<WikiRecentChange, Task> onMessage, CancellationToken cancellationToken)
         {
             var request = new HttpRequestMessage(HttpMethod.Get, "v2/stream/recentchange");
 
@@ -42,8 +42,13 @@ namespace Wikimedia.Producer.Clients
 
                 if (line.StartsWith("data: "))
                 {
-                    var data = line.Substring("data: ".Length);
-                    await onMessage(data);
+                    var rawData = line.Substring("data: ".Length);
+                    var wikiRecentChange = System.Text.Json.JsonSerializer.Deserialize<WikiRecentChange>(rawData);
+
+                    if (wikiRecentChange == null)
+                        _logger.LogWarning("Failed to deserialize. Raw data: {RawData}", rawData);
+                    
+                    await onMessage(wikiRecentChange!);
                 }
             }
         }
