@@ -7,6 +7,7 @@
         public string ClientId { get; set; } = "";
         public ProducerOptions Producer { get; set; } = new();
         public ConsumerOptions Consumer { get; set; } = new();
+        public DeadLetterOptions DLQ { get; set; } = new();
     }
 
     public class ProducerOptions
@@ -25,5 +26,10 @@
         public string ConsumerTopic { get; set; } = "";
         public string AutoOffsetReset { get; set; } = "latest";
         public bool EnableAutoCommit { get; set; }
+    }
+
+    public class DeadLetterOptions
+    {
+        public string Topic { get; set; } = "";
     }
 }

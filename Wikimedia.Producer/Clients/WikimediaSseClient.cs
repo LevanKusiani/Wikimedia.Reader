@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using Wikimedia.Common.Extensions;
 
 namespace Wikimedia.Producer.Clients
 {
@@ -13,7 +14,7 @@ namespace Wikimedia.Producer.Clients
             _logger = logger;
         }
 
-        public async Task StartAsync(Func<WikiRecentChange, Task> onMessage, CancellationToken cancellationToken)
+        public async Task StartAsync(Func<WikiRecentChange, Task> onMessage, Func<string, Exception, Task>? onError, CancellationToken cancellationToken)
         {
             var request = new HttpRequestMessage(HttpMethod.Get, "v2/stream/recentchange");
 
@@ -43,12 +44,22 @@ namespace Wikimedia.Producer.Clients
                 if (line.StartsWith("data: "))
                 {
                     var rawData = line.Substring("data: ".Length);
-                    var wikiRecentChange = System.Text.Json.JsonSerializer.Deserialize<WikiRecentChange>(rawData);
 
-                    if (wikiRecentChange == null)
-                        _logger.LogWarning("Failed to deserialize. Raw data: {RawData}", rawData);
-                    
-                    await onMessage(wikiRecentChange!);
+                    try
+                    {
+                        var wikiRecentChange = WikiRecentChangeExtensions.Deserialize(rawData);
+
+                        await onMessage(wikiRecentChange!);
+                    }
+                    catch (InvalidOperationException e)
+                    {
+                        _logger.LogWarning("Failed to deserialize Wikimedia event: {Message}", e.Message);
+
+                        if (onError != null)
+                        {
+                            await onError(rawData, e);
+                        }
+                    }
                 }
             }
         }

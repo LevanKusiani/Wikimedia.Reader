@@ -7,16 +7,19 @@ namespace Wikimedia.Consumer.Workers
 {
     internal class WikimediaStreamingConsumerWorker : BackgroundService
     {
+        private readonly DlqProducerService _producerService;
         private readonly OpenSearchService _openSearchService;
         private readonly KafkaOptions _options;
         private readonly ILogger<WikimediaStreamingConsumerWorker> _logger;
         private readonly IConsumer<string, string> _consumer;
 
         public WikimediaStreamingConsumerWorker(
+            DlqProducerService producerService,
             OpenSearchService openSearchService,
             IOptions<KafkaOptions> kafkaOptions,
             ILogger<WikimediaStreamingConsumerWorker> logger)
         {
+            _producerService = producerService;
             _openSearchService = openSearchService;
             _options = kafkaOptions.Value;
             _logger = logger;
@@ -99,21 +102,32 @@ namespace Wikimedia.Consumer.Workers
                             ");
 
                     // Send data to opensearch
-                    await _openSearchService.IndexDocumentAsync(
+                    try
+                    {
+                        await _openSearchService.IndexDocumentAsync(
                         "wikimedia",
                         result.Message.Value,
                         stoppingToken);
-
-                    if (!_options.Consumer.EnableAutoCommit)
+                    }
+                    catch (Exception ex)
                     {
-                        try
+                        _logger.LogError(ex, "Indexing failed, sending to DLQ");
+
+                        await _producerService.ProduceAsync(result.Message.Key ?? "dlq", result.Message.Value);
+
+                        if (!_options.Consumer.EnableAutoCommit)
                         {
-                            _consumer.Commit(result);
+                            try
+                            {
+                                _consumer.Commit(result);
+                            }
+                            catch (KafkaException e)
+                            {
+                                _logger.LogError(e, "Commit failed.");
+                            }
                         }
-                        catch (KafkaException ex)
-                        {
-                            _logger.LogError(ex, "Commit failed.");
-                        }
+
+                        continue;
                     }
                 }
             }

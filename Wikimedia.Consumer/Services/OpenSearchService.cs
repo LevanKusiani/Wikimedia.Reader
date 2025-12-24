@@ -26,7 +26,10 @@ namespace Wikimedia.Consumer.Services
             );
 
             if (!response.Success)
+            {
                 _logger.LogError("Failed to index document: {Error}", response.Body);
+                return;
+            }
 
             _logger.LogInformation("Document indexed successfully in {IndexName}", indexName);
         }
